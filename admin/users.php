@@ -1,39 +1,72 @@
 <?php
-require "../auth/middleware.php";
-require "../config/database.php";
-require "../controllers/UserController.php";
 
-// ADMIN ONLY
-if ($currentUser['role'] !== 'admin') {
-    jsonResponse(["message" => "Access denied"], 403);
-}
+require_once __DIR__ . '/../auth/middleware.php';
+require_once __DIR__ . '/../controllers/UserController.php';
+require_once __DIR__ . '/../helpers/response.php';
 
-$db = (new Database())->connect();
-$controller = new UserController($db);
+/**
+ * NOTE:
+ * - Auth & role check dilakukan DI CONTROLLER
+ * - API layer hanya routing request
+ */
 
-$method = $_SERVER['REQUEST_METHOD'];
-$id = $_GET['id'] ?? null;
-$data = json_decode(file_get_contents("php://input"), true);
+$controller = new UserController();
+$method     = $_SERVER['REQUEST_METHOD'];
+$action     = $_GET['action'] ?? null;
+$id         = $_GET['id'] ?? null;
 
 switch ($method) {
-    case "GET":
-        $id ? $controller->show($id) : $controller->index();
-        break;
 
-    case "POST":
-        $controller->store($data);
-        break;
+    /**
+     * POST /api/users/create
+     */
+    case 'POST':
+        if ($action === 'create') {
+            $controller->create();
+            break;
+        }
 
-    case "PUT":
-        isset($data['password'])
-            ? $controller->updatePassword($id, $data)
-            : $controller->update($id, $data);
-        break;
+        jsonResponse(false, 'Invalid POST action', 400);
 
-    case "DELETE":
-        $controller->destroy($id);
-        break;
+    /**
+     * GET /api/users/me
+     * GET /api/users/all
+     */
+    case 'GET':
+        if ($action === 'me') {
+            $controller->me();
+            break;
+        }
+
+        if ($action === 'all') {
+            $controller->all();
+            break;
+        }
+
+        jsonResponse(false, 'Invalid GET action', 400);
+
+    /**
+     * PUT /api/users/update
+     */
+    case 'PUT':
+        if ($action === 'update') {
+            $controller->update();
+            break;
+        }
+
+        jsonResponse(false, 'Invalid PUT action', 400);
+
+    /**
+     * DELETE /api/users/delete?id=1
+     */
+    case 'DELETE':
+        if ($action === 'delete' && $id) {
+            $controller->delete((int) $id);
+            break;
+        }
+
+        jsonResponse(false, 'User ID required', 400);
 
     default:
-        jsonResponse(["message" => "Method not allowed"], 405);
+        jsonResponse(false, 'Method not allowed', 405);
 }

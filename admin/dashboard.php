@@ -1,11 +1,25 @@
 <?php
-require "../auth/middleware.php";
+
+require_once __DIR__ . '/../auth/middleware.php';
+require_once __DIR__ . '/../helpers/response.php';
+
+// ambil user dari JWT
+$currentUser = auth();
 
 if ($currentUser['role'] !== 'admin') {
-    jsonResponse(["message" => "Access denied"], 403);
+    jsonResponse(
+        false,
+        'Access denied',
+        data: "Error 403"
+    );
 }
 
-jsonResponse([
-    "message" => "Welcome Admin",
-    "user_id" => $currentUser['uid']
-]);
+jsonResponse(
+    true,
+    'Welcome Admin',
+    200,
+    [
+        'id' => $currentUser['id'],
+        'role'    => $currentUser['role']
+    ]
+);

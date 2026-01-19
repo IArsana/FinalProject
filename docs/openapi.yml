@@ -1,0 +1,282 @@
+openapi: 3.0.3
+
+info:
+  title: Sistem Absensi API
+  description: |
+    REST API Sistem Absensi berbasis PHP OOP.
+
+    API ini digunakan untuk:
+    - Autentikasi pengguna menggunakan JWT
+    - Manajemen user (Admin)
+    - Pencatatan kehadiran (check-in & check-out)
+    
+    ## Cara Menggunakan API
+    1. Login menggunakan endpoint `/auth/login`
+    2. Salin token JWT dari response
+    3. Klik tombol **Authorize** di Swagger UI
+    4. Masukkan token dengan format: `Bearer <token>`
+    5. Akses endpoint sesuai role (User / Admin)
+
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:5000/
+    description: Local Development Server
+
+tags:
+  - name: Auth
+    description: Autentikasi dan otorisasi pengguna
+  - name: Users
+    description: Manajemen user
+  - name: Attendance
+    description: Sistem absensi
+  - name: Dashboard
+    description: Dashboard berdasarkan role
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+
+paths:
+
+  # ============================
+  # AUTH
+  # ============================
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login user
+      description: |
+        Digunakan untuk login user dan mendapatkan JWT token.
+
+        **Cara penggunaan:**
+        - Masukkan email dan password
+        - Jika valid, server mengembalikan token JWT
+        - Token digunakan untuk mengakses endpoint lain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  example: admin@mail.com
+                password:
+                  type: string
+                  example: password
+      responses:
+        200:
+          description: Login berhasil
+        401:
+          description: Email atau password salah
+
+  # ============================
+  # DASHBOARD
+  # ============================
+
+  /admin/dashboard.php:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard admin
+      description: |
+        Endpoint dashboard khusus admin.
+
+        **Akses:**
+        - Hanya user dengan role `admin`
+      responses:
+        200:
+          description: Berhasil mengakses dashboard admin
+        403:
+          description: Akses ditolak
+
+  /user/dashboard.php:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard user
+      description: |
+        Endpoint dashboard untuk user biasa.
+
+        **Akses:**
+        - Semua user yang sudah login
+      responses:
+        200:
+          description: Berhasil mengakses dashboard user
+
+  # ============================
+  # USERS
+  # ============================
+
+  /api/users/me:
+    get:
+      tags: [Users]
+      summary: Profil user yang sedang login
+      description: |
+        Mengambil data user berdasarkan token JWT.
+
+        **Cara penggunaan:**
+        - Login terlebih dahulu
+        - Gunakan token JWT
+      responses:
+        200:
+          description: Data profil user
+
+  /api/users/all:
+    get:
+      tags: [Users]
+      summary: Ambil semua user (Admin)
+      description: |
+        Digunakan admin untuk melihat seluruh user.
+
+        **Akses:**
+        - Hanya admin
+      responses:
+        200:
+          description: Daftar user
+        403:
+          description: Akses ditolak
+
+  /api/users/create:
+    post:
+      tags: [Users]
+      summary: Tambah user baru (Admin)
+      description: |
+        Digunakan admin untuk menambahkan user baru.
+
+        **Cara penggunaan:**
+        - Masukkan nama, email, password, dan role
+        - Role: `admin` atau `user`
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, role]
+              properties:
+                name:
+                  type: string
+                  example: Budi
+                email:
+                  type: string
+                  example: budi@mail.com
+                password:
+                  type: string
+                  example: rahasia123
+                role:
+                  type: string
+                  example: user
+      responses:
+        201:
+          description: User berhasil dibuat
+        409:
+          description: Email sudah terdaftar
+
+  /api/users/update:
+    put:
+      tags: [Users]
+      summary: Update data user
+      description: |
+        Digunakan user untuk mengubah profil sendiri.
+
+        **Data opsional:**
+        - name
+        - password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                password:
+                  type: string
+      responses:
+        200:
+          description: User berhasil diupdate
+
+  /api/users/delete:
+    delete:
+      tags: [Users]
+      summary: Hapus user (Admin)
+      description: |
+        Digunakan admin untuk menghapus user.
+
+        **Cara penggunaan:**
+        - Kirim parameter `id` melalui query string
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: User berhasil dihapus
+        404:
+          description: User tidak ditemukan
+
+  # ============================
+  # ATTENDANCE
+  # ============================
+
+  /api/attendance/checkin:
+    post:
+      tags: [Attendance]
+      summary: Check-in absensi
+      description: |
+        Digunakan user untuk melakukan check-in.
+
+        **Catatan:**
+        - User hanya bisa check-in sekali per hari
+      responses:
+        200:
+          description: Check-in berhasil
+        400:
+          description: Sudah check-in hari ini
+
+  /api/attendance/checkout:
+    post:
+      tags: [Attendance]
+      summary: Check-out absensi
+      description: |
+        Digunakan user untuk melakukan check-out.
+
+        **Catatan:**
+        - Harus check-in terlebih dahulu
+      responses:
+        200:
+          description: Check-out berhasil
+        400:
+          description: Belum check-in
+
+  /api/attendance/me:
+    get:
+      tags: [Attendance]
+      summary: Riwayat absensi user
+      description: |
+        Menampilkan riwayat absensi user yang sedang login.
+      responses:
+        200:
+          description: Riwayat absensi
+
+  /api/attendance/all:
+    get:
+      tags: [Attendance]
+      summary: Riwayat absensi semua user
+      description: |
+        Menampilkan riwayat absensi semua user.
+      responses:
+        200:
+          description: Riwayat absensi

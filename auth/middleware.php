@@ -1,24 +1,31 @@
 <?php
-require "../config/jwt.php";
-require "../helpers/response.php";
-require "../vendor/autoload.php";
 
-use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
+require_once dirname(__DIR__) . '/helpers/response.php';
+require_once dirname(__DIR__) . '/config/jwt.php';
 
-$headers = getallheaders();
-$auth = $headers['Authorization'] ?? '';
+function auth(?string $role = null): array
+{
+    $headers = getallheaders();
 
-if (!$auth) {
-    jsonResponse(["message" => "Unauthorized"], 401);
+    if (!isset($headers['Authorization'])) {
+        jsonResponse(false, 'Unauthorized (token missing)', 401);
+    }
+
+    if (!preg_match('/Bearer\s(\S+)/', $headers['Authorization'], $matches)) {
+        jsonResponse(false, 'Unauthorized (invalid token)', 401);
+    }
+
+    $token = $matches[1];
+
+    try {
+        $payload = verifyJWT($token);
+    } catch (Exception $e) {
+        jsonResponse(false, 'Unauthorized (token invalid)', 401);
+    }
+
+    if ($role && $payload['user']['role'] !== $role) {
+        jsonResponse(false, 'Forbidden', 403);
+    }
+
+    return $payload['user'];
 }
-
-$token = str_replace("Bearer ", "", $auth);
-
-try {
-    $decoded = JWT::decode($token, new Key(JWT_SECRET, 'HS256'));
-} catch (Exception $e) {
-    jsonResponse(["message" => "Invalid or expired token"], 401);
-}
-
-$currentUser = (array) $decoded;

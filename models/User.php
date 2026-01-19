@@ -1,78 +1,75 @@
 <?php
 
-class User
+require_once __DIR__ . '/BaseModel.php';
+
+class User extends BaseModel
 {
-    private $conn;
-    private $table = "users";
+    protected string $table = 'users';
 
-    public function __construct($db)
+    public function findById(int $id): ?array
     {
-        $this->conn = $db;
-    }
-
-    //get user by username
-    public function findByUsername(string $username): ?array
-    {
-        $stmt = $this->conn->prepare(
-            "SELECT * FROM {$this->table} WHERE username = :username LIMIT 1"
+        $stmt = $this->db->prepare(
+            "SELECT id, name, email, role FROM {$this->table} WHERE id = ?"
         );
-        $stmt->execute(["username" => $username]);
-        $user = $stmt->fetch();
-
-        return $user ?: null;
-    }
-
-    // CREATE
-    public function create($username, $password, $role)
-    {
-        $hash = password_hash($password, PASSWORD_DEFAULT);
-
-        $sql = "INSERT INTO {$this->table} (username, password, role)
-                VALUES (?, ?, ?)";
-        $stmt = $this->conn->prepare($sql);
-        return $stmt->execute([$username, $hash, $role]);
-    }
-
-    // READ ALL
-    public function getAll()
-    {
-        $sql = "SELECT id, username, role, created_at FROM {$this->table}";
-        return $this->conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // READ BY ID
-    public function getById($id)
-    {
-        $sql = "SELECT id, username, role FROM {$this->table} WHERE id = ?";
-        $stmt = $this->conn->prepare($sql);
         $stmt->execute([$id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    // UPDATE
-    public function update($id, $username, $role)
+    public function findByEmail(string $email): ?array
     {
-        $sql = "UPDATE {$this->table}
-                SET username = ?, role = ?
-                WHERE id = ?";
-        $stmt = $this->conn->prepare($sql);
-        return $stmt->execute([$username, $role, $id]);
+        $stmt = $this->db->prepare(
+            "SELECT * FROM {$this->table} WHERE email = ?"
+        );
+        $stmt->execute([$email]);
+
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    // UPDATE PASSWORD
-    public function updatePassword($id, $password)
+    public function getAll(): array
     {
-        $hash = password_hash($password, PASSWORD_DEFAULT);
-        $sql = "UPDATE {$this->table} SET password = ? WHERE id = ?";
-        $stmt = $this->conn->prepare($sql);
-        return $stmt->execute([$hash, $id]);
+        $stmt = $this->db->query(
+            "SELECT id, name, email, role FROM {$this->table}"
+        );
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // DELETE
-    public function delete($id)
+    public function create(array $data): int
     {
-        $sql = "DELETE FROM {$this->table} WHERE id = ?";
-        $stmt = $this->conn->prepare($sql);
+        $stmt = $this->db->prepare(
+            "INSERT INTO {$this->table} (name, email, password, role)
+            VALUES (:name, :email, :password, :role)"
+        );
+
+        $stmt->execute([
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'password' => $data['password'],
+            'role'     => $data['role']
+        ]);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function update(int $id, array $data): bool
+    {
+        $fields = [];
+        foreach ($data as $key => $value) {
+            $fields[] = "$key = :$key";
+        }
+
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+
+        $data['id'] = $id;
+        return $stmt->execute($data);
+    }
+
+    public function delete(int $id): bool
+    {
+        $stmt = $this->db->prepare(
+            "DELETE FROM {$this->table} WHERE id = ?"
+        );
         return $stmt->execute([$id]);
     }
 }

@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# block direct access to core folders
+RewriteRule ^(config|controllers|models|helpers|vendor|auth)/ - [F,L]
+
+# API routing
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/(.*)$ api/$1.php [L,QSA]

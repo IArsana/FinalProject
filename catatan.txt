@@ -21,3 +21,6 @@ VALUES (
 );
 
 SELECT * FROM users;
+
+
+# default password admin === password
